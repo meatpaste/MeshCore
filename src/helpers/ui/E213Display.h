@@ -32,6 +32,9 @@ public:
   void clear() override;
   void startFrame(Color bkg = DARK) override;
   void setTextSize(int sz) override;
+  void setLargeFont(bool enable) override;
+  void setMediumFont(bool enable) override;
+  void setSmallFont(bool enable) override;
   void setColor(Color c) override;
   void setCursor(int x, int y) override;
   void print(const char *str) override;

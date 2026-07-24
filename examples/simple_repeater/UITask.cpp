@@ -94,10 +94,12 @@ void UITask::renderCurrScreen() {
     const WeatherData& wd = _weather->getData();
     if (!wd.valid) {
       _display->setColor(DisplayDriver::LIGHT);
+      _display->setSmallFont(true);
       _display->drawTextCentered(_display->width() / 2, 50,
         _weather->isWifiConnected() ? "Fetching..." : "Connecting WiFi...");
+      _display->setSmallFont(false);
     } else {
-      const int icon_x = 6, icon_y = 18;
+      const int icon_x = 6, icon_y = 14;
       const int right_x = icon_x + WEATHER_ICON_SIZE + 10;   // start of text column
       const int right_mid = right_x + (_display->width() - right_x) / 2;
 
@@ -105,35 +107,38 @@ void UITask::renderCurrScreen() {
       _display->drawXbm(icon_x, icon_y, weatherCodeToIcon(wd.weather_code), WEATHER_ICON_SIZE, WEATHER_ICON_SIZE);
 
       _display->setColor(DisplayDriver::YELLOW);
-      _display->setTextSize(3);
+      _display->setLargeFont(true);
       sprintf(tmp, "%.0fC", wd.temp_c);
-      _display->drawTextCentered(right_mid, 22, tmp);
+      _display->drawTextCentered(right_mid, 48, tmp);
+      _display->setLargeFont(false);
 
       _display->setColor(DisplayDriver::GREEN);
-      _display->setTextSize(2);
-      _display->drawTextCentered(right_mid, 58, WeatherClient::codeToLabel(wd.weather_code));
+      _display->setMediumFont(true);
+      _display->drawTextCentered(right_mid, 72, WeatherClient::codeToLabel(wd.weather_code));
+      _display->setMediumFont(false);
 
-      _display->setColor(DisplayDriver::LIGHT);
-      _display->fillRect(icon_x, icon_y + WEATHER_ICON_SIZE + 4, _display->width() - icon_x*2, 1);
-
-      const int row_y = icon_y + WEATHER_ICON_SIZE + 10;
+      // full-width rows below here must clear the icon (icon_y + WEATHER_ICON_SIZE)
+      const int row_y = icon_y + WEATHER_ICON_SIZE + 12;
 
       _display->setColor(DisplayDriver::GREEN);
-      _display->setTextSize(2);
+      _display->setSmallFont(true);
       sprintf(tmp, "Hum %.0f%%", wd.humidity_pct);
-      _display->drawTextLeftAlign(icon_x, row_y + 6, tmp);
+      _display->drawTextLeftAlign(icon_x, row_y + 18, tmp);
 
       const int arrow_x = _display->width() - icon_x - WIND_ARROW_SIZE;
       _display->drawXbm(arrow_x, row_y, windDegToArrow(wd.wind_dir_deg), WIND_ARROW_SIZE, WIND_ARROW_SIZE);
       sprintf(tmp, "%s %.0fmph", windDegToCompass(wd.wind_dir_deg), wd.wind_mph);
-      _display->drawTextRightAlign(arrow_x - 4, row_y + 6, tmp);
+      _display->drawTextRightAlign(arrow_x - 4, row_y + 18, tmp);
+      _display->setSmallFont(false);
 
       // router stats
       uint32_t relayed = the_mesh.getNumSentFlood() + the_mesh.getNumSentDirect();
-      sprintf(tmp, "Nodes: %d   Relayed: %lu", the_mesh.getActiveNeighbourCount(), (unsigned long) relayed);
+      uint32_t heard = the_mesh.getNumRecvFlood() + the_mesh.getNumRecvDirect();
+      sprintf(tmp, "Nodes:%d Relayed:%lu Pkts:%lu",
+        the_mesh.getActiveNeighbourCount(), (unsigned long) relayed, (unsigned long) heard);
       _display->setColor(DisplayDriver::LIGHT);
       _display->setTextSize(1);
-      _display->drawTextCentered(_display->width() / 2, 112, tmp);
+      _display->drawTextCentered(_display->width() / 2, _display->height() - 8, tmp);
     }
 #endif
   } else {  // home screen

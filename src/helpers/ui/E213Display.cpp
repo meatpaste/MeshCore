@@ -1,6 +1,9 @@
 #include "E213Display.h"
 
 #include "../../MeshCore.h"
+#include <Fonts/FreeSansBold24pt7b.h>
+#include <Fonts/FreeSansBold12pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
 
 BaseDisplay* E213Display::detectEInk()
 {
@@ -124,6 +127,24 @@ void E213Display::setTextSize(int sz) {
   display_crc.update<int>(sz);
   // The library handles text size internally
     display->setTextSize(sz);
+}
+
+void E213Display::setLargeFont(bool enable) {
+  display_crc.update<bool>(enable);
+  display->setFont(enable ? &FreeSansBold24pt7b : NULL);
+  display->setTextSize(1);   // GFX fonts are pre-sized; avoid double-scaling
+}
+
+void E213Display::setMediumFont(bool enable) {
+  display_crc.update<bool>(enable);
+  display->setFont(enable ? &FreeSansBold12pt7b : NULL);
+  display->setTextSize(1);
+}
+
+void E213Display::setSmallFont(bool enable) {
+  display_crc.update<bool>(enable);
+  display->setFont(enable ? &FreeSans9pt7b : NULL);
+  display->setTextSize(1);
 }
 
 void E213Display::setColor(Color c) {

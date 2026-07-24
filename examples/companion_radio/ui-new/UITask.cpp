@@ -230,18 +230,21 @@ public:
 
 #ifdef WITH_WEATHER_STATION
     if (_page == HomePage::WEATHER) {
-      display.setTextSize(1);
+      display.setSmallFont(true);
       if (!_weather || !_weather->isEnabled()) {
         display.setColor(DisplayDriver::LIGHT);
         display.drawTextCentered(display.width() / 2, 50, "Weather not configured");
+        display.setSmallFont(false);
       } else {
         const WeatherData& wd = _weather->getData();
         if (!wd.valid) {
           display.setColor(DisplayDriver::LIGHT);
           display.drawTextCentered(display.width() / 2, 50,
             _weather->isWifiConnected() ? "Fetching..." : "Connecting WiFi...");
+          display.setSmallFont(false);
         } else {
-          const int icon_x = 6, icon_y = 18;
+          display.setSmallFont(false);
+          const int icon_x = 6, icon_y = 14;
           const int right_x = icon_x + WEATHER_ICON_SIZE + 10;   // start of text column
           const int right_mid = right_x + (display.width() - right_x) / 2;
 
@@ -249,28 +252,29 @@ public:
           display.drawXbm(icon_x, icon_y, weatherCodeToIcon(wd.weather_code), WEATHER_ICON_SIZE, WEATHER_ICON_SIZE);
 
           display.setColor(DisplayDriver::YELLOW);
-          display.setTextSize(3);
+          display.setLargeFont(true);
           sprintf(tmp, "%.0fC", wd.temp_c);
-          display.drawTextCentered(right_mid, 22, tmp);
+          display.drawTextCentered(right_mid, 48, tmp);
+          display.setLargeFont(false);
 
           display.setColor(DisplayDriver::GREEN);
-          display.setTextSize(2);
-          display.drawTextCentered(right_mid, 58, WeatherClient::codeToLabel(wd.weather_code));
+          display.setMediumFont(true);
+          display.drawTextCentered(right_mid, 72, WeatherClient::codeToLabel(wd.weather_code));
+          display.setMediumFont(false);
 
-          display.setColor(DisplayDriver::LIGHT);
-          display.fillRect(icon_x, icon_y + WEATHER_ICON_SIZE + 4, display.width() - icon_x*2, 1);
-
-          const int row_y = icon_y + WEATHER_ICON_SIZE + 10;
+          // full-width rows below here must clear the icon (icon_y + WEATHER_ICON_SIZE)
+          const int row_y = icon_y + WEATHER_ICON_SIZE + 12;
 
           display.setColor(DisplayDriver::GREEN);
-          display.setTextSize(2);
+          display.setSmallFont(true);
           sprintf(tmp, "Hum %.0f%%", wd.humidity_pct);
-          display.drawTextLeftAlign(icon_x, row_y + 6, tmp);
+          display.drawTextLeftAlign(icon_x, row_y + 18, tmp);
 
           const int arrow_x = display.width() - icon_x - WIND_ARROW_SIZE;
           display.drawXbm(arrow_x, row_y, windDegToArrow(wd.wind_dir_deg), WIND_ARROW_SIZE, WIND_ARROW_SIZE);
           sprintf(tmp, "%s %.0fmph", windDegToCompass(wd.wind_dir_deg), wd.wind_mph);
-          display.drawTextRightAlign(arrow_x - 4, row_y + 6, tmp);
+          display.drawTextRightAlign(arrow_x - 4, row_y + 18, tmp);
+          display.setSmallFont(false);
 
           int age_secs = (millis() - wd.fetched_at) / 1000;
           if (age_secs < 60) {
@@ -280,7 +284,7 @@ public:
           }
           display.setColor(DisplayDriver::LIGHT);
           display.setTextSize(1);
-          display.drawTextCentered(display.width() / 2, display.height() - 10, tmp);
+          display.drawTextCentered(display.width() / 2, display.height() - 8, tmp);
         }
       }
     } else if (_page == HomePage::STATUS) {

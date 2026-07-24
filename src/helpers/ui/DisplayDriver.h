@@ -20,6 +20,12 @@ public:
   virtual void clear() = 0;
   virtual void startFrame(Color bkg = DARK) = 0;
   virtual void setTextSize(int sz) = 0;
+  // Switch to a smoother (anti-aliased outline) font, where supported. Three sizes:
+  // large (hero numbers), medium (subheadings), small (labels/footers).
+  // No-op by default; override on drivers that have one available.
+  virtual void setLargeFont(bool enable) {}
+  virtual void setMediumFont(bool enable) {}
+  virtual void setSmallFont(bool enable) {}
   virtual void setColor(Color c) = 0;
   virtual void setCursor(int x, int y) = 0;
   virtual void print(const char* str) = 0;
