@@ -2,7 +2,7 @@
 
 <img src="docs/images/weatherstation-repeater-display.jpg" alt="Heltec Wireless Paper e-ink display showing the weather station screen: 18C, Clear, Hum 60%, NW 7mph wind, Nodes: 0, Relayed: 2" width="500">
 
-This fork adds a WiFi-powered weather station screen to the Heltec Wireless Paper v1.1 (ESP32-S3) `simple_repeater` and `companion_radio` builds. The device periodically connects to WiFi and fetches current conditions (temperature, condition icon, humidity, wind speed/direction) from [Open-Meteo](https://open-meteo.com/), rendering them full-screen on the e-ink display alongside router stats (active neighbours, packets relayed). WiFi credentials and location are configured at runtime over the serial console (`set wifi_ssid`, `set wifi_pwd`, `set lat`, `set lon`, `set weather on`) — nothing is baked into source or committed to the repo.
+This fork adds a WiFi-powered weather station screen to the [Heltec Wireless Paper v1.1](https://heltec.org/project/wireless-paper/) (ESP32-S3) `simple_repeater` and `companion_radio` builds. The device periodically connects to WiFi and fetches current conditions (temperature, condition icon, humidity, wind speed/direction) from [Open-Meteo](https://open-meteo.com/), rendering them full-screen on the e-ink display alongside router stats (active neighbours, packets relayed). WiFi credentials and location are configured at runtime over the serial console (`set wifi_ssid`, `set wifi_pwd`, `set lat`, `set lon`, `set weather on`) — nothing is baked into source or committed to the repo.
 
 Build, flash, and configure a board in one interactive command:
 
