@@ -1,3 +1,16 @@
+## 🌦️ Weatherstation Repeater Mod
+
+This fork adds a WiFi-powered weather station screen to the Heltec Wireless Paper v1.1 (ESP32-S3) `simple_repeater` and `companion_radio` builds. The device periodically connects to WiFi and fetches current conditions (temperature, condition icon, humidity, wind speed/direction) from [Open-Meteo](https://open-meteo.com/), rendering them full-screen on the e-ink display alongside router stats (active neighbours, packets relayed). WiFi credentials and location are configured at runtime over the serial console (`set wifi_ssid`, `set wifi_pwd`, `set lat`, `set lon`, `set weather on`) — nothing is baked into source or committed to the repo.
+
+Build, flash, and configure a board in one interactive command:
+
+```
+pip3 install pyserial
+python3 deploy_weather_station.py
+```
+
+This builds the `Heltec_Wireless_Paper_repeater` firmware, flashes it over USB, then prompts for your WiFi SSID/password and location and sends them to the device over the serial CLI. Use `--env Heltec_Wireless_Paper_companion_radio_usb` to target the companion-radio build instead, or `--port` to skip serial auto-detection.
+
 ## About MeshCore
 
 MeshCore is a lightweight, portable C++ library that enables multi-hop packet routing for embedded projects using LoRa and other packet radios. It is designed for developers who want to create resilient, decentralized communication networks that work without the internet.
