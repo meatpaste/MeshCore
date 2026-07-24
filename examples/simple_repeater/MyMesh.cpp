@@ -908,6 +908,10 @@ MyMesh::MyMesh(mesh::MainBoard &board, mesh::Radio &radio, mesh::MillisecondCloc
   _prefs.gps_interval = 0;
   _prefs.advert_loc_policy = ADVERT_LOC_PREFS;
 
+  // weather station defaults
+  _prefs.weather_enabled = 0;
+  _prefs.weather_interval_secs = 900;  // 15 minutes
+
   _prefs.adc_multiplier = 0.0f; // 0.0f means use default board multiplier
 
 #if defined(USE_SX1262) || defined(USE_SX1268)
@@ -929,6 +933,7 @@ void MyMesh::begin(FILESYSTEM *fs) {
   _fs = fs;
   // load persisted prefs
   _cli.loadPrefs(_fs);
+
   acl.load(_fs, self_id);
   // TODO: key_store.begin();
   region_map.load(_fs);

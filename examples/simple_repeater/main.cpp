@@ -13,6 +13,11 @@ SimpleMeshTables tables;
 
 MyMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 
+#ifdef WITH_WEATHER_STATION
+  #include "WeatherClient.h"
+  WeatherClient weather_client(the_mesh.getNodePrefs());
+#endif
+
 void halt() {
   while (1) ;
 }
@@ -91,8 +96,16 @@ void setup() {
 
   the_mesh.begin(fs);
 
+#ifdef WITH_WEATHER_STATION
+  weather_client.begin();
+#endif
+
 #ifdef DISPLAY_CLASS
-  ui_task.begin(the_mesh.getNodePrefs(), FIRMWARE_BUILD_DATE, FIRMWARE_VERSION);
+  ui_task.begin(the_mesh.getNodePrefs(), FIRMWARE_BUILD_DATE, FIRMWARE_VERSION
+  #ifdef WITH_WEATHER_STATION
+      , &weather_client
+  #endif
+    );
 #endif
 
   // send out initial zero hop Advertisement to the mesh
@@ -149,6 +162,9 @@ void loop() {
   sensors.loop();
 #ifdef DISPLAY_CLASS
   ui_task.loop();
+#endif
+#ifdef WITH_WEATHER_STATION
+  weather_client.poll();
 #endif
   rtc_clock.tick();
 

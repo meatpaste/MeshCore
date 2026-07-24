@@ -21,6 +21,7 @@
 
 #include "../AbstractUITask.h"
 #include "../NodePrefs.h"
+#include "WeatherClient.h"
 
 class UITask : public AbstractUITask {
   DisplayDriver* _display;
@@ -70,7 +71,11 @@ public:
     ui_started_at = 0;
     curr = NULL;
   }
-  void begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs);
+  void begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs
+#ifdef WITH_WEATHER_STATION
+      , WeatherClient* weather = NULL
+#endif
+    );
 
   void gotoHomeScreen() { setCurrScreen(home); }
   void showAlert(const char* text, int duration_millis);

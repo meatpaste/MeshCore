@@ -90,6 +90,9 @@ static uint32_t _atoi(const char* sp) {
   #include "UITask.h"
   UITask ui_task(&board, &serial_interface);
 #endif
+#ifdef WITH_WEATHER_STATION
+  #include "WeatherClient.h"
+#endif
 
 StdRNG fast_rng;
 SimpleMeshTables tables;
@@ -98,6 +101,10 @@ MyMesh the_mesh(radio_driver, fast_rng, rtc_clock, tables, store
       , &ui_task
    #endif
 );
+
+#ifdef WITH_WEATHER_STATION
+  WeatherClient weather_client(the_mesh.getNodePrefs());
+#endif
 
 /* END GLOBAL OBJECTS */
 
@@ -235,8 +242,16 @@ void setup() {
   the_mesh.applyGpsPrefs();
 #endif
 
+#ifdef WITH_WEATHER_STATION
+  weather_client.begin();
+#endif
+
 #ifdef DISPLAY_CLASS
-  ui_task.begin(disp, &sensors, the_mesh.getNodePrefs());  // still want to pass this in as dependency, as prefs might be moved
+  ui_task.begin(disp, &sensors, the_mesh.getNodePrefs()  // still want to pass this in as dependency, as prefs might be moved
+  #ifdef WITH_WEATHER_STATION
+      , &weather_client
+  #endif
+    );
 #endif
 
   board.onBootComplete();
@@ -247,6 +262,9 @@ void loop() {
   sensors.loop();
 #ifdef DISPLAY_CLASS
   ui_task.loop();
+#endif
+#ifdef WITH_WEATHER_STATION
+  weather_client.poll();
 #endif
   rtc_clock.tick();
 

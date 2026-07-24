@@ -1,6 +1,10 @@
 #include "UITask.h"
 #include <Arduino.h>
 #include <helpers/CommonCLI.h>
+#include "WeatherClient.h"
+#include <helpers/ui/WeatherIcons.h>
+#include <helpers/ui/WindArrows.h>
+#include "MyMesh.h"
 
 #ifndef USER_BTN_PRESSED
 #define USER_BTN_PRESSED LOW
@@ -26,10 +30,18 @@ static const uint8_t meshcore_logo [] PROGMEM = {
     0xe3, 0xe3, 0x8f, 0xff, 0x1f, 0xfc, 0x3c, 0x0e, 0x1f, 0xf8, 0xff, 0xf8, 0x70, 0x3c, 0x7f, 0xf8, 
 };
 
-void UITask::begin(NodePrefs* node_prefs, const char* build_date, const char* firmware_version) {
+void UITask::begin(NodePrefs* node_prefs, const char* build_date, const char* firmware_version
+#ifdef WITH_WEATHER_STATION
+    , WeatherClient* weather
+#endif
+  ) {
   _prevBtnState = HIGH;
   _auto_off = millis() + AUTO_OFF_MILLIS;
   _node_prefs = node_prefs;
+#ifdef WITH_WEATHER_STATION
+  _weather = weather;
+  _weather_page = true;
+#endif
   _display->turnOn();
 
   // strip off dash and commit hash by changing dash to null terminator
@@ -72,6 +84,58 @@ void UITask::renderCurrScreen() {
     uint16_t typeWidth = _display->getTextWidth(node_type);
     _display->setCursor((_display->width() - typeWidth) / 2, 48);
     _display->print(node_type);
+#ifdef WITH_WEATHER_STATION
+  } else if (_weather_page && _weather && _weather->isEnabled()) {  // weather screen
+    _display->setCursor(0, 0);
+    _display->setTextSize(1);
+    _display->setColor(DisplayDriver::GREEN);
+    _display->print(_node_prefs->node_name);
+
+    const WeatherData& wd = _weather->getData();
+    if (!wd.valid) {
+      _display->setColor(DisplayDriver::LIGHT);
+      _display->drawTextCentered(_display->width() / 2, 50,
+        _weather->isWifiConnected() ? "Fetching..." : "Connecting WiFi...");
+    } else {
+      const int icon_x = 6, icon_y = 18;
+      const int right_x = icon_x + WEATHER_ICON_SIZE + 10;   // start of text column
+      const int right_mid = right_x + (_display->width() - right_x) / 2;
+
+      _display->setColor(DisplayDriver::LIGHT);
+      _display->drawXbm(icon_x, icon_y, weatherCodeToIcon(wd.weather_code), WEATHER_ICON_SIZE, WEATHER_ICON_SIZE);
+
+      _display->setColor(DisplayDriver::YELLOW);
+      _display->setTextSize(3);
+      sprintf(tmp, "%.0fC", wd.temp_c);
+      _display->drawTextCentered(right_mid, 22, tmp);
+
+      _display->setColor(DisplayDriver::GREEN);
+      _display->setTextSize(2);
+      _display->drawTextCentered(right_mid, 58, WeatherClient::codeToLabel(wd.weather_code));
+
+      _display->setColor(DisplayDriver::LIGHT);
+      _display->fillRect(icon_x, icon_y + WEATHER_ICON_SIZE + 4, _display->width() - icon_x*2, 1);
+
+      const int row_y = icon_y + WEATHER_ICON_SIZE + 10;
+
+      _display->setColor(DisplayDriver::GREEN);
+      _display->setTextSize(2);
+      sprintf(tmp, "Hum %.0f%%", wd.humidity_pct);
+      _display->drawTextLeftAlign(icon_x, row_y + 6, tmp);
+
+      const int arrow_x = _display->width() - icon_x - WIND_ARROW_SIZE;
+      _display->drawXbm(arrow_x, row_y, windDegToArrow(wd.wind_dir_deg), WIND_ARROW_SIZE, WIND_ARROW_SIZE);
+      sprintf(tmp, "%s %.0fmph", windDegToCompass(wd.wind_dir_deg), wd.wind_mph);
+      _display->drawTextRightAlign(arrow_x - 4, row_y + 6, tmp);
+
+      // router stats
+      uint32_t relayed = the_mesh.getNumSentFlood() + the_mesh.getNumSentDirect();
+      sprintf(tmp, "Nodes: %d   Relayed: %lu", the_mesh.getActiveNeighbourCount(), (unsigned long) relayed);
+      _display->setColor(DisplayDriver::LIGHT);
+      _display->setTextSize(1);
+      _display->drawTextCentered(_display->width() / 2, 112, tmp);
+    }
+#endif
   } else {  // home screen
     // node name
     _display->setCursor(0, 0);
@@ -99,7 +163,10 @@ void UITask::loop() {
     if (btnState != _prevBtnState) {
       if (btnState == USER_BTN_PRESSED) {  // pressed?
         if (_display->isOn()) {
-          // TODO: any action ?
+#ifdef WITH_WEATHER_STATION
+          _weather_page = !_weather_page;
+          _next_refresh = 0;  // trigger immediate redraw
+#endif
         } else {
           _display->turnOn();
         }

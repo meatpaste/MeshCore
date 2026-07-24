@@ -233,6 +233,12 @@ void DataStore::loadPrefsInt(const char *filename, NodePrefs& _prefs, double& no
     file.read((uint8_t *)&_prefs.rx_boosted_gain, sizeof(_prefs.rx_boosted_gain));         // 89
     file.read((uint8_t *)_prefs.default_scope_name, sizeof(_prefs.default_scope_name));    // 90
     file.read((uint8_t *)_prefs.default_scope_key, sizeof(_prefs.default_scope_key));     // 121
+    file.read((uint8_t *)&_prefs.weather_enabled, sizeof(_prefs.weather_enabled));         // 137
+    file.read((uint8_t *)_prefs.wifi_ssid, sizeof(_prefs.wifi_ssid));                      // 138
+    file.read((uint8_t *)_prefs.wifi_password, sizeof(_prefs.wifi_password));              // 171
+    file.read((uint8_t *)&_prefs.weather_lat, sizeof(_prefs.weather_lat));                 // 235
+    file.read((uint8_t *)&_prefs.weather_lon, sizeof(_prefs.weather_lon));                 // 239
+    file.read((uint8_t *)&_prefs.weather_interval_secs, sizeof(_prefs.weather_interval_secs)); // 243
 
     file.close();
   }
@@ -273,6 +279,12 @@ void DataStore::savePrefs(const NodePrefs& _prefs, double node_lat, double node_
     file.write((uint8_t *)&_prefs.rx_boosted_gain, sizeof(_prefs.rx_boosted_gain));         // 89
     file.write((uint8_t *)_prefs.default_scope_name, sizeof(_prefs.default_scope_name));    // 90
     file.write((uint8_t *)_prefs.default_scope_key, sizeof(_prefs.default_scope_key));     // 121
+    file.write((uint8_t *)&_prefs.weather_enabled, sizeof(_prefs.weather_enabled));         // 137
+    file.write((uint8_t *)_prefs.wifi_ssid, sizeof(_prefs.wifi_ssid));                      // 138
+    file.write((uint8_t *)_prefs.wifi_password, sizeof(_prefs.wifi_password));              // 171
+    file.write((uint8_t *)&_prefs.weather_lat, sizeof(_prefs.weather_lat));                 // 235
+    file.write((uint8_t *)&_prefs.weather_lon, sizeof(_prefs.weather_lon));                 // 239
+    file.write((uint8_t *)&_prefs.weather_interval_secs, sizeof(_prefs.weather_interval_secs)); // 243
 
     file.close();
   }

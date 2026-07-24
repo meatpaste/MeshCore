@@ -63,6 +63,10 @@ struct NodePrefs { // persisted to file
   uint8_t rx_boosted_gain; // power settings
   uint8_t path_hash_mode;   // which path mode to use when sending
   uint8_t loop_detect;
+  uint8_t weather_enabled;      // weather station feature enabled (0=disabled, 1=enabled)
+  char wifi_ssid[33];
+  char wifi_password[64];
+  uint32_t weather_interval_secs;  // weather fetch interval in seconds (uses node_lat/node_lon for location)
 };
 
 class CommonCLICallbacks {

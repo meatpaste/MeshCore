@@ -878,6 +878,8 @@ MyMesh::MyMesh(mesh::Radio &radio, mesh::RNG &rng, mesh::RTCClock &rtc, SimpleMe
   _prefs.tx_power_dbm = LORA_TX_POWER;
   _prefs.gps_enabled = 0;       // GPS disabled by default
   _prefs.gps_interval = 0;      // No automatic GPS updates by default
+  _prefs.weather_enabled = 0;   // weather station disabled by default
+  _prefs.weather_interval_secs = 900;  // 15 minutes
   //_prefs.rx_delay_base = 10.0f;  enable once new algo fixed
 #if defined(USE_SX1262) || defined(USE_SX1268)
 #ifdef SX126X_RX_BOOSTED_GAIN
@@ -2029,6 +2031,34 @@ void MyMesh::checkCLIRescueCmd() {
         _prefs.ble_pin = atoi(&config[4]);
         savePrefs();
         Serial.printf("  > pin is now %06d\n", _prefs.ble_pin);
+      } else if (memcmp(config, "wifi_ssid ", 10) == 0) {
+        StrHelper::strncpy(_prefs.wifi_ssid, &config[10], sizeof(_prefs.wifi_ssid));
+        savePrefs();
+        Serial.printf("  > wifi_ssid is now %s\n", _prefs.wifi_ssid);
+      } else if (memcmp(config, "wifi_pwd ", 9) == 0) {
+        StrHelper::strncpy(_prefs.wifi_password, &config[9], sizeof(_prefs.wifi_password));
+        savePrefs();
+        Serial.println("  > wifi_pwd updated");
+      } else if (strcmp(config, "weather on") == 0) {
+        _prefs.weather_enabled = 1;
+        savePrefs();
+        Serial.println("  > weather station enabled");
+      } else if (strcmp(config, "weather off") == 0) {
+        _prefs.weather_enabled = 0;
+        savePrefs();
+        Serial.println("  > weather station disabled");
+      } else if (memcmp(config, "weather_lat ", 12) == 0) {
+        _prefs.weather_lat = atof(&config[12]);
+        savePrefs();
+        Serial.printf("  > weather_lat is now %.4f\n", _prefs.weather_lat);
+      } else if (memcmp(config, "weather_lon ", 12) == 0) {
+        _prefs.weather_lon = atof(&config[12]);
+        savePrefs();
+        Serial.printf("  > weather_lon is now %.4f\n", _prefs.weather_lon);
+      } else if (memcmp(config, "weather_interval ", 17) == 0) {
+        _prefs.weather_interval_secs = (uint32_t) constrain(atoi(&config[17]), 60, 86400);
+        savePrefs();
+        Serial.printf("  > weather_interval is now %u secs\n", (unsigned) _prefs.weather_interval_secs);
       } else {
         Serial.printf("  Error: unknown config: %s\n", config);
       }

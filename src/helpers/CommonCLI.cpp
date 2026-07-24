@@ -91,7 +91,11 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {
     file.read((uint8_t *)&_prefs->rx_boosted_gain, sizeof(_prefs->rx_boosted_gain));              // 290
     file.read((uint8_t *)&_prefs->flood_max_unscoped, sizeof(_prefs->flood_max_unscoped));   // 291
     file.read((uint8_t *)&_prefs->flood_max_advert, sizeof(_prefs->flood_max_advert));       // 292
-    // next: 293
+    file.read((uint8_t *)&_prefs->weather_enabled, sizeof(_prefs->weather_enabled));         // 293
+    file.read((uint8_t *)_prefs->wifi_ssid, sizeof(_prefs->wifi_ssid));                      // 294
+    file.read((uint8_t *)_prefs->wifi_password, sizeof(_prefs->wifi_password));              // 327
+    file.read((uint8_t *)&_prefs->weather_interval_secs, sizeof(_prefs->weather_interval_secs)); // 391
+    // next: 395
 
     // sanitise bad pref values
     _prefs->rx_delay_base = constrain(_prefs->rx_delay_base, 0, 20.0f);
@@ -184,7 +188,11 @@ void CommonCLI::savePrefs(FILESYSTEM* fs) {
     file.write((uint8_t *)&_prefs->rx_boosted_gain, sizeof(_prefs->rx_boosted_gain));              // 290
     file.write((uint8_t *)&_prefs->flood_max_unscoped, sizeof(_prefs->flood_max_unscoped));   // 291
     file.write((uint8_t *)&_prefs->flood_max_advert, sizeof(_prefs->flood_max_advert));       // 292
-    // next: 293
+    file.write((uint8_t *)&_prefs->weather_enabled, sizeof(_prefs->weather_enabled));         // 293
+    file.write((uint8_t *)_prefs->wifi_ssid, sizeof(_prefs->wifi_ssid));                      // 294
+    file.write((uint8_t *)_prefs->wifi_password, sizeof(_prefs->wifi_password));              // 327
+    file.write((uint8_t *)&_prefs->weather_interval_secs, sizeof(_prefs->weather_interval_secs)); // 391
+    // next: 395
 
     file.close();
   }
@@ -586,6 +594,26 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
     } else {
       strcpy(reply, "Error, invalid radio params");
     }
+  } else if (memcmp(config, "wifi_ssid ", 10) == 0) {
+    StrHelper::strncpy(_prefs->wifi_ssid, &config[10], sizeof(_prefs->wifi_ssid));
+    savePrefs();
+    sprintf(reply, "OK - wifi_ssid is now %s", _prefs->wifi_ssid);
+  } else if (memcmp(config, "wifi_pwd ", 9) == 0) {
+    StrHelper::strncpy(_prefs->wifi_password, &config[9], sizeof(_prefs->wifi_password));
+    savePrefs();
+    strcpy(reply, "OK - wifi_pwd updated");
+  } else if (strcmp(config, "weather on") == 0) {
+    _prefs->weather_enabled = 1;
+    savePrefs();
+    strcpy(reply, "OK - weather station enabled (uses 'lat'/'lon' for location)");
+  } else if (strcmp(config, "weather off") == 0) {
+    _prefs->weather_enabled = 0;
+    savePrefs();
+    strcpy(reply, "OK - weather station disabled");
+  } else if (memcmp(config, "weather_interval ", 17) == 0) {
+    _prefs->weather_interval_secs = (uint32_t) constrain(atoi(&config[17]), 60, 86400);
+    savePrefs();
+    sprintf(reply, "OK - weather_interval is now %u secs", (unsigned) _prefs->weather_interval_secs);
   } else if (memcmp(config, "lat ", 4) == 0) {
     _prefs->node_lat = atof(&config[4]);
     savePrefs();

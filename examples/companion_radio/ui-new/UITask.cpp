@@ -30,6 +30,9 @@
 #endif
 
 #include "icons.h"
+#include "WeatherClient.h"
+#include <helpers/ui/WeatherIcons.h>
+#include <helpers/ui/WindArrows.h>
 
 class SplashScreen : public UIScreen {
   UITask* _task;
@@ -85,7 +88,10 @@ public:
 
 class HomeScreen : public UIScreen {
   enum HomePage {
-    FIRST,
+#ifdef WITH_WEATHER_STATION
+    WEATHER,
+#endif
+    STATUS,
     RECENT,
     RADIO,
     BLUETOOTH,
@@ -104,6 +110,9 @@ class HomeScreen : public UIScreen {
   mesh::RTCClock* _rtc;
   SensorManager* _sensors;
   NodePrefs* _node_prefs;
+#ifdef WITH_WEATHER_STATION
+  WeatherClient* _weather;
+#endif
   uint8_t _page;
   bool _shutdown_init;
   AdvertPath recent[UI_RECENT_LIST_SIZE];
@@ -177,8 +186,16 @@ class HomeScreen : public UIScreen {
   }
 
 public:
-  HomeScreen(UITask* task, mesh::RTCClock* rtc, SensorManager* sensors, NodePrefs* node_prefs)
-     : _task(task), _rtc(rtc), _sensors(sensors), _node_prefs(node_prefs), _page(0),
+  HomeScreen(UITask* task, mesh::RTCClock* rtc, SensorManager* sensors, NodePrefs* node_prefs
+#ifdef WITH_WEATHER_STATION
+      , WeatherClient* weather
+#endif
+    )
+     : _task(task), _rtc(rtc), _sensors(sensors), _node_prefs(node_prefs),
+#ifdef WITH_WEATHER_STATION
+       _weather(weather),
+#endif
+       _page(0),
        _shutdown_init(false), sensors_lpp(200) {  }
 
   void poll() override {
@@ -211,7 +228,65 @@ public:
       }
     }
 
-    if (_page == HomePage::FIRST) {
+#ifdef WITH_WEATHER_STATION
+    if (_page == HomePage::WEATHER) {
+      display.setTextSize(1);
+      if (!_weather || !_weather->isEnabled()) {
+        display.setColor(DisplayDriver::LIGHT);
+        display.drawTextCentered(display.width() / 2, 50, "Weather not configured");
+      } else {
+        const WeatherData& wd = _weather->getData();
+        if (!wd.valid) {
+          display.setColor(DisplayDriver::LIGHT);
+          display.drawTextCentered(display.width() / 2, 50,
+            _weather->isWifiConnected() ? "Fetching..." : "Connecting WiFi...");
+        } else {
+          const int icon_x = 6, icon_y = 18;
+          const int right_x = icon_x + WEATHER_ICON_SIZE + 10;   // start of text column
+          const int right_mid = right_x + (display.width() - right_x) / 2;
+
+          display.setColor(DisplayDriver::LIGHT);
+          display.drawXbm(icon_x, icon_y, weatherCodeToIcon(wd.weather_code), WEATHER_ICON_SIZE, WEATHER_ICON_SIZE);
+
+          display.setColor(DisplayDriver::YELLOW);
+          display.setTextSize(3);
+          sprintf(tmp, "%.0fC", wd.temp_c);
+          display.drawTextCentered(right_mid, 22, tmp);
+
+          display.setColor(DisplayDriver::GREEN);
+          display.setTextSize(2);
+          display.drawTextCentered(right_mid, 58, WeatherClient::codeToLabel(wd.weather_code));
+
+          display.setColor(DisplayDriver::LIGHT);
+          display.fillRect(icon_x, icon_y + WEATHER_ICON_SIZE + 4, display.width() - icon_x*2, 1);
+
+          const int row_y = icon_y + WEATHER_ICON_SIZE + 10;
+
+          display.setColor(DisplayDriver::GREEN);
+          display.setTextSize(2);
+          sprintf(tmp, "Hum %.0f%%", wd.humidity_pct);
+          display.drawTextLeftAlign(icon_x, row_y + 6, tmp);
+
+          const int arrow_x = display.width() - icon_x - WIND_ARROW_SIZE;
+          display.drawXbm(arrow_x, row_y, windDegToArrow(wd.wind_dir_deg), WIND_ARROW_SIZE, WIND_ARROW_SIZE);
+          sprintf(tmp, "%s %.0fmph", windDegToCompass(wd.wind_dir_deg), wd.wind_mph);
+          display.drawTextRightAlign(arrow_x - 4, row_y + 6, tmp);
+
+          int age_secs = (millis() - wd.fetched_at) / 1000;
+          if (age_secs < 60) {
+            sprintf(tmp, "updated %ds ago", age_secs);
+          } else {
+            sprintf(tmp, "updated %dm ago", age_secs / 60);
+          }
+          display.setColor(DisplayDriver::LIGHT);
+          display.setTextSize(1);
+          display.drawTextCentered(display.width() / 2, display.height() - 10, tmp);
+        }
+      }
+    } else if (_page == HomePage::STATUS) {
+#else
+    if (_page == HomePage::STATUS) {
+#endif
       display.setColor(DisplayDriver::YELLOW);
       display.setTextSize(2);
       sprintf(tmp, "MSG: %d", _task->getMsgCount());
@@ -554,7 +629,11 @@ public:
   }
 };
 
-void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs) {
+void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs
+#ifdef WITH_WEATHER_STATION
+    , WeatherClient* weather
+#endif
+  ) {
   _display = display;
   _sensors = sensors;
   _auto_off = millis() + AUTO_OFF_MILLIS;
@@ -586,7 +665,11 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
   _alert_expiry = 0;
 
   splash = new SplashScreen(this);
-  home = new HomeScreen(this, &rtc_clock, sensors, node_prefs);
+  home = new HomeScreen(this, &rtc_clock, sensors, node_prefs
+#ifdef WITH_WEATHER_STATION
+      , weather
+#endif
+    );
   msg_preview = new MsgPreviewScreen(this, &rtc_clock);
   setCurrScreen(splash);
 }

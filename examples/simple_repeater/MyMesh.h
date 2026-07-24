@@ -252,4 +252,18 @@ public:
 #if defined(USE_SX1262) || defined(USE_SX1268)
   void setRxBoostedGain(bool enable) override;
 #endif
+
+  int getActiveNeighbourCount() const {
+#if MAX_NEIGHBOURS
+    int count = 0;
+    for (int i = 0; i < MAX_NEIGHBOURS; i++) {
+      if (neighbours[i].heard_timestamp > 0) count++;
+    }
+    return count;
+#else
+    return 0;
+#endif
+  }
 };
+
+extern MyMesh the_mesh;
