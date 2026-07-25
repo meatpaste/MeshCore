@@ -13,6 +13,7 @@ class UITask {
 #ifdef WITH_WEATHER_STATION
   WeatherClient* _weather;
   bool _weather_page;
+  uint32_t _last_weather_fetch;
 #endif
 
   void renderCurrScreen();

@@ -41,6 +41,7 @@ void UITask::begin(NodePrefs* node_prefs, const char* build_date, const char* fi
 #ifdef WITH_WEATHER_STATION
   _weather = weather;
   _weather_page = true;
+  _last_weather_fetch = 0;
 #endif
   _display->turnOn();
 
@@ -180,6 +181,19 @@ void UITask::loop() {
       _prevBtnState = btnState;
     }
     _next_read = millis() + 200;  // 5 reads per second
+  }
+#endif
+
+#ifdef WITH_WEATHER_STATION
+  if (_weather) {
+    const WeatherData& wd = _weather->getData();
+    if (wd.valid && wd.fetched_at != _last_weather_fetch) {
+      // new weather reading landed -- wake the screen so the update is actually visible
+      _last_weather_fetch = wd.fetched_at;
+      _display->turnOn();
+      _next_refresh = 0;
+      _auto_off = millis() + AUTO_OFF_MILLIS;
+    }
   }
 #endif
 
