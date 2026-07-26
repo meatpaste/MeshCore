@@ -103,7 +103,7 @@ MyMesh the_mesh(radio_driver, fast_rng, rtc_clock, tables, store
 );
 
 #ifdef WITH_WEATHER_STATION
-  WeatherClient weather_client(the_mesh.getNodePrefs());
+  WeatherClient weather_client(the_mesh.getNodePrefs(), &rtc_clock);
 #endif
 
 /* END GLOBAL OBJECTS */

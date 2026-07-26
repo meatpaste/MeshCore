@@ -3,6 +3,7 @@
 #ifdef WITH_WEATHER_STATION
 
 #include "../NodePrefs.h"
+#include <MeshCore.h>
 #include <WiFiClientSecure.h>
 #include <stdint.h>
 
@@ -22,15 +23,18 @@ class WeatherClient {
   enum State { IDLE, WIFI_CONNECTING };
 
   NodePrefs* _prefs;
+  mesh::RTCClock* _rtc;
   WeatherData _data;
   State _state;
   unsigned long _next_action;
+  bool _time_synced;
   WiFiClientSecure _client;
 
   bool doFetch();
+  void syncTimeFromNTP();
 
 public:
-  WeatherClient(NodePrefs* prefs);
+  WeatherClient(NodePrefs* prefs, mesh::RTCClock* rtc);
 
   void begin();
   void poll();

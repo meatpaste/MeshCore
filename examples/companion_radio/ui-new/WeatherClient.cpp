@@ -5,14 +5,15 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <time.h>
 
 #define WEATHER_HOST          "api.open-meteo.com"
 #define WIFI_CONNECT_TIMEOUT  15000
 #define WIFI_RETRY_DELAY      30000
 #define FETCH_RETRY_DELAY     20000
 
-WeatherClient::WeatherClient(NodePrefs* prefs)
-  : _prefs(prefs), _state(IDLE), _next_action(0) {
+WeatherClient::WeatherClient(NodePrefs* prefs, mesh::RTCClock* rtc)
+  : _prefs(prefs), _rtc(rtc), _state(IDLE), _next_action(0), _time_synced(false) {
   _client.setInsecure();  // no cert pinning -- simplification for embedded use
 }
 
@@ -40,6 +41,22 @@ const char* WeatherClient::codeToLabel(int code) {
   if (code >= 85 && code <= 86) return "Snow";
   if (code >= 95 && code <= 99) return "Storm";
   return "Unknown";
+}
+
+void WeatherClient::syncTimeFromNTP() {
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo, 5000)) {
+    time_t now;
+    time(&now);
+    _rtc->setCurrentTime((uint32_t) now);
+    _time_synced = true;
+    Serial.printf("WeatherClient: NTP time sync OK, %04d-%02d-%02d %02d:%02d:%02d UTC\n",
+      timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+      timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  } else {
+    Serial.println("WeatherClient: NTP time sync failed");
+  }
 }
 
 bool WeatherClient::doFetch() {
@@ -98,6 +115,7 @@ void WeatherClient::poll() {
     case IDLE:
       if ((long)(now - _next_action) >= 0) {
         if (WiFi.status() == WL_CONNECTED) {
+          if (!_time_synced) syncTimeFromNTP();
           bool ok = doFetch();
           _next_action = now + (ok ? (_prefs->weather_interval_secs * 1000UL) : FETCH_RETRY_DELAY);
         } else {
@@ -113,6 +131,7 @@ void WeatherClient::poll() {
     case WIFI_CONNECTING:
       if (WiFi.status() == WL_CONNECTED) {
         Serial.printf("WeatherClient: WiFi connected, IP=%s\n", WiFi.localIP().toString().c_str());
+        if (!_time_synced) syncTimeFromNTP();
         bool ok = doFetch();
         _state = IDLE;
         _next_action = now + (ok ? (_prefs->weather_interval_secs * 1000UL) : FETCH_RETRY_DELAY);
