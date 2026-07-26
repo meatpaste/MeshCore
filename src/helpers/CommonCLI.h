@@ -66,7 +66,8 @@ struct NodePrefs { // persisted to file
   uint8_t weather_enabled;      // weather station feature enabled (0=disabled, 1=enabled)
   char wifi_ssid[33];
   char wifi_password[64];
-  uint32_t weather_interval_secs;  // weather fetch interval in seconds (uses node_lat/node_lon for location)
+  uint32_t weather_interval_secs;  // weather fetch interval in seconds
+  float weather_lat, weather_lon;  // location used for weather fetches (separate from node_lat/node_lon)
 };
 
 class CommonCLICallbacks {

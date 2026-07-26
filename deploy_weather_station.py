@@ -88,9 +88,9 @@ def configure_device(port, ssid, password, lat, lon, interval):
         send_command(ser, f"set wifi_ssid {ssid}")
         send_command(ser, f"set wifi_pwd {password}")
         if lat:
-            send_command(ser, f"set lat {lat}")
+            send_command(ser, f"set weather_lat {lat}")
         if lon:
-            send_command(ser, f"set lon {lon}")
+            send_command(ser, f"set weather_lon {lon}")
         send_command(ser, f"set weather_interval {interval}")
         send_command(ser, "set weather on")
     print("\nDone. The device should connect to WiFi and start showing weather shortly.")

@@ -101,8 +101,15 @@ Key new/changed files:
 - Source: Open-Meteo (`https://api.open-meteo.com/v1/forecast`), no API key.
   Query params used: `current=temperature_2m,relative_humidity_2m,
   wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=mph`.
-- Location reuses each build's existing node lat/lon (`set lat`/`set lon`)
-  rather than a separate weather-specific location field.
+- Location uses a dedicated `weather_lat`/`weather_lon` pair (`set weather_lat`/
+  `set weather_lon`), separate from the node's own `node_lat`/`node_lon` (used
+  for advertising position) — makes sense since a repeater's advertised
+  position isn't necessarily where you want weather for. On `simple_repeater`
+  (`src/helpers/CommonCLI.h`'s shared `NodePrefs`), `weather_lat`/`weather_lon`
+  default to the node's `node_lat`/`node_lon` on first load if unset, so
+  existing configured devices keep working after upgrading. companion_radio
+  (`examples/companion_radio/NodePrefs.h`) already had its own separate
+  `weather_lat`/`weather_lon` fields from the start.
 - `WiFiClientSecure::setInsecure()` is used — no TLS cert pinning, a
   deliberate simplification for embedded use, flagged here in case that's
   ever revisited.

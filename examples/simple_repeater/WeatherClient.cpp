@@ -46,7 +46,7 @@ bool WeatherClient::doFetch() {
   char url[256];
   snprintf(url, sizeof(url),
     "https://" WEATHER_HOST "/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=mph",
-    _prefs->node_lat, _prefs->node_lon);
+    _prefs->weather_lat, _prefs->weather_lon);
 
   bool success = false;
   HTTPClient http;
