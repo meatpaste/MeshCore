@@ -33,6 +33,7 @@
 #include "WeatherClient.h"
 #include <helpers/ui/WeatherIcons.h>
 #include <helpers/ui/WindArrows.h>
+#include <RTClib.h>
 
 class SplashScreen : public UIScreen {
   UITask* _task;
@@ -276,12 +277,9 @@ public:
           display.drawTextRightAlign(arrow_x - 4, row_y + 18, tmp);
           display.setSmallFont(false);
 
-          int age_secs = (millis() - wd.fetched_at) / 1000;
-          if (age_secs < 60) {
-            sprintf(tmp, "updated %ds ago", age_secs);
-          } else {
-            sprintf(tmp, "updated %dm ago", age_secs / 60);
-          }
+          uint32_t age_secs = (millis() - wd.fetched_at) / 1000;
+          DateTime dt(_rtc->getCurrentTime() - age_secs);
+          sprintf(tmp, "updated %02d:%02d", dt.hour(), dt.minute());
           display.setColor(DisplayDriver::LIGHT);
           display.setTextSize(1);
           display.drawTextCentered(display.width() / 2, display.height() - 8, tmp);
@@ -489,6 +487,12 @@ public:
         display.drawTextCentered(display.width() / 2, 64 - 11, "hibernate:" PRESS_LABEL);
       }
     }
+#ifdef WITH_WEATHER_STATION
+    if (_page == HomePage::WEATHER && _weather && _weather->isEnabled() && _weather->getData().valid) {
+      // data only changes once per fetch -- no need to repaint the e-ink every 5s
+      return 900000;   // 15 mins, matches the weather fetch cadence
+    }
+#endif
     return 5000;   // next render after 5000 ms
   }
 
