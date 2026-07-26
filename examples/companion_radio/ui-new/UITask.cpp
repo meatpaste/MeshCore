@@ -278,7 +278,7 @@ public:
           display.setSmallFont(false);
 
           uint32_t age_secs = (millis() - wd.fetched_at) / 1000;
-          DateTime dt(_rtc->getCurrentTime() - age_secs);
+          DateTime dt(_rtc->getCurrentTime() - age_secs + wd.utc_offset_secs);
           sprintf(tmp, "updated %02d:%02d", dt.hour(), dt.minute());
           display.setColor(DisplayDriver::LIGHT);
           display.setTextSize(1);

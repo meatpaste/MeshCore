@@ -2,6 +2,7 @@
 
 #include <Arduino.h> // needed for PlatformIO
 #include <Mesh.h>
+#include <RTClib.h>
 
 #define CMD_APP_START                 1
 #define CMD_SEND_TXT_MSG              2
@@ -2062,6 +2063,10 @@ void MyMesh::checkCLIRescueCmd() {
       } else {
         Serial.printf("  Error: unknown config: %s\n", config);
       }
+    } else if (strcmp(cli_command, "clock") == 0) {
+      uint32_t now = getRTCClock()->getCurrentTime();
+      DateTime dt = DateTime(now);
+      Serial.printf("  > %02d:%02d - %d/%d/%d UTC (epoch %u)\n", dt.hour(), dt.minute(), dt.day(), dt.month(), dt.year(), (unsigned) now);
     } else if (strcmp(cli_command, "rebuild") == 0) {
       bool success = _store->formatFileSystem();
       if (success) {

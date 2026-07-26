@@ -14,6 +14,7 @@ struct WeatherData {
   float wind_mph = 0;
   int wind_dir_deg = -1;
   int weather_code = -1;
+  int32_t utc_offset_secs = 0;  // local UTC offset for weather_lat/weather_lon, from Open-Meteo
   uint32_t fetched_at = 0;  // millis() timestamp of last successful fetch
 };
 

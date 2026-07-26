@@ -62,7 +62,7 @@ void WeatherClient::syncTimeFromNTP() {
 bool WeatherClient::doFetch() {
   char url[256];
   snprintf(url, sizeof(url),
-    "https://" WEATHER_HOST "/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=mph",
+    "https://" WEATHER_HOST "/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=mph&timezone=auto",
     (double) _prefs->weather_lat, (double) _prefs->weather_lon);
 
   Serial.printf("WeatherClient: GET %s\n", url);
@@ -86,6 +86,7 @@ bool WeatherClient::doFetch() {
         _data.wind_mph       = current["wind_speed_10m"] | 0.0f;
         _data.wind_dir_deg   = current["wind_direction_10m"] | -1;
         _data.weather_code   = current["weather_code"] | -1;
+        _data.utc_offset_secs = doc["utc_offset_seconds"] | 0;
         _data.fetched_at     = millis();
         _data.valid          = true;
         success = true;
