@@ -91,6 +91,7 @@ void WeatherClient::poll() {
           bool ok = doFetch();
           _next_action = now + (ok ? (_prefs->weather_interval_secs * 1000UL) : FETCH_RETRY_DELAY);
         } else {
+          Serial.printf("[weather] connecting to SSID '%s'\n", _prefs->wifi_ssid);
           WiFi.mode(WIFI_STA);
           WiFi.begin(_prefs->wifi_ssid, _prefs->wifi_password);
           _state = WIFI_CONNECTING;
@@ -101,10 +102,13 @@ void WeatherClient::poll() {
 
     case WIFI_CONNECTING:
       if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("[weather] WiFi connected, RSSI=%d\n", WiFi.RSSI());
         bool ok = doFetch();
+        Serial.printf("[weather] fetch %s\n", ok ? "OK" : "FAILED");
         _state = IDLE;
         _next_action = now + (ok ? (_prefs->weather_interval_secs * 1000UL) : FETCH_RETRY_DELAY);
       } else if ((long)(now - _next_action) >= 0) {
+        Serial.printf("[weather] WiFi connect timed out, status=%d\n", (int) WiFi.status());
         // connect attempt timed out, back off and retry later
         _state = IDLE;
         _next_action = now + WIFI_RETRY_DELAY;
