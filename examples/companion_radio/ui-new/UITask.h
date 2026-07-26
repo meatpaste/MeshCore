@@ -54,6 +54,11 @@ class UITask : public AbstractUITask {
   UIScreen* msg_preview;
   UIScreen* curr;
 
+#ifdef WITH_WEATHER_STATION
+  WeatherClient* _weather;
+  uint32_t _last_weather_fetch;
+#endif
+
   void userLedHandler();
 
   // Button action handlers

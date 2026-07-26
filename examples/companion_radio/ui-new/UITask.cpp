@@ -655,6 +655,11 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 
   _node_prefs = node_prefs;
 
+#ifdef WITH_WEATHER_STATION
+  _weather = weather;
+  _last_weather_fetch = 0;
+#endif
+
   if (_display != NULL) {
     _display->turnOn();
   }
@@ -879,6 +884,22 @@ void UITask::loop() {
 #endif
 
   if (curr) curr->poll();
+
+#ifdef WITH_WEATHER_STATION
+  if (_weather) {
+    const WeatherData& wd = _weather->getData();
+    if (wd.valid && wd.fetched_at != _last_weather_fetch) {
+      // new weather reading landed -- wake the screen so the update is actually visible,
+      // since it may have auto-off'd long before the next scheduled repaint
+      _last_weather_fetch = wd.fetched_at;
+      if (_display != NULL) {
+        _display->turnOn();
+        _next_refresh = 0;
+        _auto_off = millis() + AUTO_OFF_MILLIS;
+      }
+    }
+  }
+#endif
 
   if (_display != NULL && _display->isOn()) {
     if (millis() >= _next_refresh && curr) {
