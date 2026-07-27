@@ -11,6 +11,8 @@ Usage:
 """
 import argparse
 import glob
+import os
+import shutil
 import subprocess
 import sys
 import time
@@ -57,42 +59,169 @@ def prompt_config():
     return ssid, password, lat, lon, interval
 
 
+def find_pio():
+    """Locate the pio binary: PATH first, then alongside the running interpreter
+    (so running this script with a venv's python just works)."""
+    found = shutil.which("pio")
+    if found:
+        return found
+    sibling = os.path.join(os.path.dirname(sys.executable), "pio")
+    if os.path.exists(sibling):
+        return sibling
+    print("Could not find 'pio'. Install it into a venv and use that venv's python:")
+    print("  python3 -m venv ~/.venvs/pio && ~/.venvs/pio/bin/pip install platformio pyserial")
+    print("  ~/.venvs/pio/bin/python deploy_weather_station.py")
+    sys.exit(1)
+
+
 def build_and_upload(env, port):
     print(f"\n--- Building and flashing env '{env}' on {port} ---")
-    cmd = ["pio", "run", "-e", env, "-t", "upload", "--upload-port", port]
+    cmd = [find_pio(), "run", "-e", env, "-t", "upload", "--upload-port", port]
     result = subprocess.run(cmd)
     if result.returncode != 0:
         print("Build/upload failed.")
         sys.exit(result.returncode)
 
 
-def send_command(ser, cmd, settle=1.0):
+# '[weather] ...' lines noticed while waiting for or draining around CLI replies.
+# Prefs survive a firmware upload, so an already-configured board often connects
+# and fetches during the CLI wait -- without this the watch below misses it and
+# then sits there until weather_interval elapses.
+_weather_seen = []
+
+
+def note_weather(text):
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("[weather]"):
+            _weather_seen.append(line)
+
+
+def drain(ser, quiet=0.4, limit=4.0):
+    """Read and discard until the device has been quiet for `quiet` seconds.
+
+    reset_input_buffer() alone races with bytes still in flight, which made the
+    previous command's reply show up against the next command.
+    """
+    deadline = time.time() + limit
+    last_data = time.time()
     ser.reset_input_buffer()
-    ser.write((cmd + "\r").encode())
-    time.sleep(settle)
-    reply = ser.read(4096).decode(errors="replace")
-    # only print the device's "-> ..." reply line, not the character echo
-    for line in reply.splitlines():
-        if "->" in line:
-            print(f"  {cmd}  {line.strip()}")
+    while time.time() < deadline:
+        chunk = ser.read(4096)
+        if chunk:
+            note_weather(chunk.decode(errors="replace"))
+            last_data = time.time()
+        elif time.time() - last_data >= quiet:
             return
-    print(f"  {cmd}  (no reply -- check device is booted and CLI is responsive)")
+        time.sleep(0.05)
+
+
+def read_reply(ser, timeout):
+    """Read until the device emits a '-> ...' reply line, or timeout. Returns it or None."""
+    deadline = time.time() + timeout
+    buf = ""
+    while time.time() < deadline:
+        chunk = ser.read(4096).decode(errors="replace")
+        if chunk:
+            note_weather(chunk)
+            buf += chunk
+        # only the device's "-> ..." reply line matters, not the character echo
+        for line in buf.splitlines():
+            if "->" in line:
+                return line.strip()
+        time.sleep(0.2)
+    return None
+
+
+def wait_for_cli(ser, timeout=45):
+    """Poll 'ver' until the CLI answers.
+
+    The board needs well over the couple of seconds the old fixed sleep allowed
+    before its CLI is up; sending config into a still-booting device wedged it
+    part-way through the sequence.
+    """
+    print("  waiting for CLI to come up...", end="", flush=True)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        ser.reset_input_buffer()
+        ser.write(b"ver\r")
+        reply = read_reply(ser, 3)
+        if reply:
+            print(f" ready ({reply.lstrip('-> ').strip()})")
+            drain(ser)
+            return True
+        print(".", end="", flush=True)
+    print(" TIMED OUT")
+    return False
+
+
+def send_command(ser, cmd, attempts=3, timeout=8):
+    label = cmd if "wifi_pwd" not in cmd else "set wifi_pwd ****"
+    for attempt in range(1, attempts + 1):
+        drain(ser)
+        ser.write((cmd + "\r").encode())
+        reply = read_reply(ser, timeout)
+        if reply:
+            print(f"  {label}  {reply}")
+            return True
+        if attempt < attempts:
+            print(f"  {label}  (no reply, retrying {attempt}/{attempts - 1})")
+    print(f"  {label}  FAILED -- no reply after {attempts} attempts")
+    return False
+
+
+def watch_weather(ser, timeout=90):
+    """Tail the '[weather] ...' log lines until the first fetch resolves."""
+    print(f"\n--- Watching for the first fetch (up to {timeout}s) ---")
+    for line in _weather_seen:
+        print(f"  {line}")
+    if any("fetch" in line for line in _weather_seen):
+        return
+
+    deadline = time.time() + timeout
+    buf = ""
+    while time.time() < deadline:
+        buf += ser.read(4096).decode(errors="replace")
+        while "\n" in buf:
+            line, buf = buf.split("\n", 1)
+            line = line.strip()
+            if line.startswith("[weather]"):
+                print(f"  {line}")
+                if "fetch" in line:
+                    return
+        time.sleep(0.2)
+    print("  (no fetch seen in this window -- an already-connected device won't")
+    print("   refetch until weather_interval elapses; it will retry on its own)")
 
 
 def configure_device(port, ssid, password, lat, lon, interval):
     print(f"\n--- Sending configuration over {port} ---")
-    # upload already hard-resets the board; give it a moment to finish setup()
-    time.sleep(2.5)
-    with serial.Serial(port, BAUD, timeout=0.3) as ser:
-        time.sleep(0.3)
-        send_command(ser, f"set wifi_ssid {ssid}")
-        send_command(ser, f"set wifi_pwd {password}")
+    # Plain open only: do NOT set dtr/rts here. Opening normally leaves the board
+    # running, but explicitly driving DTR/RTS low hard-resets it on both open and
+    # close (verified via 'stats-core' uptime_secs).
+    with serial.Serial(port, BAUD, timeout=0.5) as ser:
+        if not wait_for_cli(ser):
+            print("Device CLI never responded. Power-cycle the board and re-run with --skip-flash.")
+            sys.exit(1)
+
+        ok = True
+        # weather settings first, WiFi credentials last: setting the credentials
+        # kicks off the connect, and the fetch that follows blocks the loop
         if lat:
-            send_command(ser, f"set weather_lat {lat}")
+            ok &= send_command(ser, f"set weather_lat {lat}")
         if lon:
-            send_command(ser, f"set weather_lon {lon}")
-        send_command(ser, f"set weather_interval {interval}")
-        send_command(ser, "set weather on")
+            ok &= send_command(ser, f"set weather_lon {lon}")
+        ok &= send_command(ser, f"set weather_interval {interval}")
+        ok &= send_command(ser, "set weather on")
+        ok &= send_command(ser, f"set wifi_ssid {ssid}")
+        ok &= send_command(ser, f"set wifi_pwd {password}")
+
+        if ok:
+            watch_weather(ser)
+
+    if not ok:
+        print("\nSome settings did not confirm. Re-run with --skip-flash to retry them.")
+        sys.exit(1)
     print("\nDone. The device should connect to WiFi and start showing weather shortly.")
 
 
